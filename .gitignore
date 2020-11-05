@@ -1,0 +1,14 @@
+node_modules/
+coverage/
+public/images
+winston_logs/
+logfile.log
+logfile_winston.log
+.jshintrc
+.vscode/*
+.env
+config/default-0.json
+test.js
+mock-data.js
+.DS_Store
+package-lock.json
