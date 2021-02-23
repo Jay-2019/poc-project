@@ -2,6 +2,8 @@
 // List All EndPoints
 const redis = require("redis");
 const express = require("express");
+var AsyncLock = require('async-lock');
+var lock = new AsyncLock();
 const router = express.Router();
 // const controllers = require('../controller/controllers');
 const services = require("../service/services");
@@ -15,6 +17,7 @@ const redis_client = redis.createClient(port_redis);
 const checkCache = (req, res, next) => {
   //   const { id } = req.params;
   let id = "exams01";
+  let id2="sum";
 
   // redis_client.get("student", (err, data) => {
   //   if (err) {
@@ -30,26 +33,87 @@ const checkCache = (req, res, next) => {
   //     next();
   //   }
   // });
+///////////////////////////////////////////////
+  // redis_client.get(id, (err, data) => {
+  //   if (err) {
+  //     console.log(err);
+  //     res.status(500).send(err);
+  //   }
+  //   //if no match found
+  //   if (data != null) {
+  //     console.log("--------------------CACHE DATA---------------------------");
+  //     redis_client.del("exams01");
+  //     console.log(
+  //       "-----------------key => exams01, deleted successfully----------------------- "
+  //     );
+  //     res.status(200).send(data);
+  //   } else {
+  //     //proceed to next middleware function
+  //     next();
+  //   }
+  // });
+/////////////////////////////////////////////////////////////
+  //------------async-lock-------------------------------
+  lock.acquire(id, function( ) {
+        // Concurrency safe
+    redis_client.get(id, (err, data) => {
+      if (err) {
+        console.log(err);
+        res.status(500).send(err);
+      }
+      //if no match found
+      if (data != null) {
+      
+        redis_client.set(id, data+2);
 
-  redis_client.get(id, (err, data) => {
-    if (err) {
+        console.log("--------------------CACHE DATA---------------------------");
+        
+        // redis_client.del("exams01");
+        // console.log(
+        //   "-----------------key => exams01, deleted successfully----------------------- "
+        // );
+        redis_client.get(id,(err,data)=>{
+          if (err) {
+            console.log(err);
+            res.status(500).send(err);
+          }
+          //if no match found
+          if (data != null) {
+            res.status(200).send(data);   console.log("--------------------response DATA---------------------------");
+        
+          }
+        })
+        // res.status(200).send(data);   console.log("--------------------response DATA---------------------------");
+        
+      } else {
+        //proceed to next middleware function
+        next();
+      }
+    });
+  },function(err, ret) {
+        if (err) {
       console.log(err);
       res.status(500).send(err);
     }
-    //if no match found
-    if (data != null) {
-      console.log("--------------------CACHE DATA---------------------------");
-      redis_client.del("exams01");
-      console.log(
-        "-----------------key => exams01, deleted successfully----------------------- "
-      );
-      res.status(200).send(data);
-    } else {
-      //proceed to next middleware function
-      next();
+
+    if (ret) {
+      console.log("------------------ret----------------------");
+     
     }
   });
+
+
 };
+
+// readDataFromExcelSheet
+router.get("/readDataFromExcelSheet",services.readDataFromExcelSheet);
+
+// html=> pdf routes
+
+router.post("/html", services.convertInToPdf);
+
+router.get("/html",services.htmlToPdf);
+
 
 // users routes/////////////////////////////////////////
 router.post("/user", services.addUser);
